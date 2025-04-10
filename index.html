@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>XML to PDF Converter</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    button {
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    p {
+      margin-top: 10px;
+    }
+    #result p {
+      margin: 5px 0;
+    }
+    #errorLog {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 100px;
+      overflow-y: auto;
+      background: #f9f9f9;
+    } 
+    .version {
+      position: fixed;
+      bottom: 10px;
+      right: 15px;
+      font-size: 12px;
+      color: gray;
+    }
+  </style>
+</head>
+<body>
+  <h2>XML to PDF Converter</h2>
+
+  <button onclick="selectXml()">Select XML File(s)</button>
+  <p id="xmlPath">No XML file selected</p>
+
+  <button onclick="selectOutput()">Select Output Folder</button>
+  <p id="outputPath">No folder selected</p>
+
+  <button onclick="convert()">Convert</button>
+
+  <progress id="progress" value="0" max="100" style="width: 100%; display: none;"></progress>
+  <div id="result"></div>
+
+  <h3>Error History</h3>
+  <div id="errorLog"></div>
+  <button onclick="clearErrors()">Clear Error Log</button>
+
+  <div class="version">Version 1.03</div>
+
+  <script>
+    let xmlPaths = [];
+    let outputFolder = '';
+
+    const errorLog = JSON.parse(localStorage.getItem('errorLog') || '[]');
+    const errorLogDiv = document.getElementById('errorLog');
+
+    function displayErrors() {
+      errorLogDiv.innerHTML = errorLog.map(e => `<p style="color:red;">${e}</p>`).join('');
+    }
+
+    function logError(msg) {
+      errorLog.push(msg);
+      localStorage.setItem('errorLog', JSON.stringify(errorLog));
+      displayErrors();
+    }
+
+    function clearErrors() {
+      localStorage.removeItem('errorLog');
+      errorLog.length = 0;
+      displayErrors();
+    }
+
+    displayErrors();
+
+    async function selectXml() {
+      const result = await window.electronAPI.openFile();
+      if (result && result.length > 0) {
+        xmlPaths = result;
+        document.getElementById('xmlPath').textContent = result.join(', ');
+      }
+    }
+
+    async function selectOutput() {
+      const result = await window.electronAPI.openFolder();
+      if (result) {
+        outputFolder = result;
+        document.getElementById('outputPath').textContent = outputFolder;
+      }
+    }
+
+    async function convert() {
+      const resultEl = document.getElementById('result');
+      const progress = document.getElementById('progress');
+
+      resultEl.innerHTML = '';
+      if (!xmlPaths.length || !outputFolder) {
+        resultEl.textContent = "Please select both XML file(s) and an output folder.";
+        return;
+      }
+
+      progress.style.display = 'block';
+      progress.value = 10;
+
+      for (let i = 0; i < xmlPaths.length; i++) {
+        const file = xmlPaths[i];
+        const res = await window.electronAPI.convertXml({ xmlPath: file, outputFolder });
+
+        if (res.success) {
+          resultEl.innerHTML += `<p> Saved: ${res.path}</p>`;
+          if (xmlPaths.length === 1 && res.success && res.path) {
+            await window.electronAPI.openFile(res.path);
+          }          
+        } else {
+          resultEl.innerHTML += `<p style="color:red;"> Error: ${res.error}</p>`;
+          logError(res.error);
+        }
+
+        progress.value = Math.round(((i + 1) / xmlPaths.length) * 100);
+      }
+
+      setTimeout(() => { progress.style.display = 'none'; }, 500);
+    }
+  </script>
+</body>
+</html>
