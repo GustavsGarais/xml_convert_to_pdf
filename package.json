@@ -1,0 +1,14 @@
+{
+  "name": "xml-to-pdf-desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.1.4"
+  },
+  "dependencies": {
+    "pdfkit": "^0.16.0",
+    "xml2js": "^0.6.2"
+  }
+}
